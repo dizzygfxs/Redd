@@ -1,0 +1,1707 @@
+local finity = loadstring(game:HttpGet("https://raw.githubusercontent.com/bloodball/UI-Librarys/main/Finity%20UI%20Lib"))()
+local finityWindow = finity.new(false) -- 'true' means dark mode is enabled
+finityWindow.ChangeToggleKey(Enum.KeyCode.Equals)
+local gameplayCategory = finityWindow:Category("Gameplay") 
+local aimbotSector = gameplayCategory:Sector("Aimbot Customization") 
+local shotSector = gameplayCategory:Sector("Shot Modification") 
+local passSector = gameplayCategory:Sector("Free Pass") 
+local moveSector = gameplayCategory:Sector("Movement") 
+local charCategory = finityWindow:Category("Character") 
+local localSector = charCategory:Sector("Localplayer") 
+local UserInputService = game:GetService("UserInputService")
+local ballCategory = finityWindow:Category("Ball") 
+local gameCategory = finityWindow:Category("Game")
+local aesSector = gameCategory:Sector("Aesthetics") 
+local worldSector = gameCategory:Sector("World") 
+local ballSector = ballCategory:Sector("Ball Modification") 
+local ballIntSector = ballCategory:Sector("Ball Interference") 
+
+NetworkClient = game:GetService("NetworkClient")
+NetworkClient:SetOutgoingKBPSLimit(50000)
+
+local pick = game.Players.LocalPlayer.Backpack.Actions.Pick
+local pushback = game.Players.LocalPlayer.Backpack.Actions.Pushback
+local power = game:GetService("Players").LocalPlayer.Info.Profile.ShotPower
+local boxout = game.Players.LocalPlayer.Backpack.Actions.BoxOut
+local stats = game:GetService("Players").LocalPlayer.Info.Stats
+local vim = game:service("VirtualInputManager")
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+local rootpart = workspace[player.Name].HumanoidRootPart
+
+function releaseKey(keyCode)
+    vim:SendKeyEvent(false, keyCode, false, game)
+end
+
+function pressKey(keyCode)
+    vim:SendKeyEvent(true, keyCode, false, game)
+end
+
+-- Function to change body velocity
+local function changeBodyVelocity()
+    local rootpart = workspace[player.Name].HumanoidRootPart
+    local bodyVelocity = rootpart:FindFirstChildOfClass("BodyVelocity")
+
+    -- Wait for BodyVelocity to exist
+    while not bodyVelocity do
+        wait()
+        bodyVelocity = rootpart:FindFirstChildOfClass("BodyVelocity")
+    end
+
+    if bodyVelocity.Name == "BodyVelocity" then
+        bodyVelocity.Velocity = bodyVelocity.Velocity * 1.25
+        bodyVelocity.MaxForce = bodyVelocity.MaxForce * 1000
+    end
+    if bodyVelocity.Name == "ReboundForce" then
+        bodyVelocity.Velocity = bodyVelocity.Velocity * 1.5
+        bodyVelocity.MaxForce = bodyVelocity.MaxForce * 1000
+    end
+end
+
+function getNearestBall()
+    local players = game:GetService("Players")
+    local localPlayer = players.LocalPlayer
+    local nearestBall = nil
+    local nearestDistance = math.huge
+    for _, balls in pairs(game.Workspace.Balls:GetChildren()) do
+        local distance = (balls.Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude
+        if distance < nearestDistance then
+            return nearestBall, nearestDistance
+        end
+    end
+end
+
+function walkToNearestBall()
+    getNearestBall()
+    
+    if nearestBall then
+        local humanoid = localPlayer.Character.Humanoid
+        humanoid:MoveTo(nearestBall.Position)
+    end
+end
+
+function playEmote(animationId, speed, time)
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    AnimationId = tostring(animationId)
+    local Anim = Instance.new("Animation")
+    Anim.AnimationId = "rbxassetid://"..AnimationId
+    local k = game.Players.LocalPlayer.Character.Humanoid:LoadAnimation(Anim)
+    k:Play()
+    k:AdjustSpeed(1)
+    wait(time)
+    k:Stop()
+end
+
+function getAnimation()
+    local animator = game.Players.LocalPlayer.Character.Humanoid.Animator
+    local activeAnimations = animator:GetPlayingAnimationTracks()
+    for _, animTrack in ipairs(activeAnimations) do
+        print(animTrack.Animation.AnimationId)
+        if animTrack.Animation.AnimationId == AnimationId then
+            isAnimationPlaying = true
+            game.Players.LocalPlayer.Backpack.Actions.Rebounding.Value = true
+            return isAnimationPlaying
+        end
+    end
+end
+
+-- Function to play an animation
+local function PlayAnimation(animationId)
+    -- Check if the animation exists
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://" .. tostring(animationId)
+    local loadedAnimation = character.Humanoid:LoadAnimation(animation)
+
+    if loadedAnimation then
+        -- Play the animation
+        loadedAnimation:Play()
+    else
+        print("Failed to load animation:", animationId)
+    end
+end
+
+-- Function to stop all animations
+local function StopAllAnimations()
+    -- Get all players in the game
+    local players = game:GetService("Players"):GetPlayers()
+
+    -- Iterate through each player's character
+    for _, player in ipairs(players) do
+        local character = player.Character
+        if character then
+            if humanoid then
+                -- Stop all animations
+                local animator = humanoid:FindFirstChildOfClass("Animator")
+                if animator then
+                    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                        track:Stop()
+                    end
+                end
+            end
+        end
+    end
+end
+
+
+_G.aimbotValue = 26.6
+_G.aimKey = "O"
+
+aimbotSector:Cheat("Checkbox", "Enable Aimbot", function(State)
+    _G.aimbotBool = State
+    while _G.aimbotBool do
+        local power = game:GetService("Players").LocalPlayer.Info.Profile.ShotPower
+        if UserInputService:IsKeyDown(_G.aimKey) then
+            pressKey(Enum.KeyCode.E)
+        end
+        if power.Value >= _G.aimbotValue then
+            game:GetService("Players").LocalPlayer.Info.Profile.ShotPower.ForceRelease.Value = true
+            wait(0.15)
+            game:GetService("Players").LocalPlayer.Info.Profile.ShotPower.ForceRelease.Value = false
+        end
+        if _G.aimbotBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+aimbotSector:Cheat("Slider", "Aimbot Value", function(Value)
+	print("Aimbot value changed:", Value)
+    _G.aimbotValue = Value
+end, {min = 50, max = 60, suffix = " studs"})
+
+_G.forceZeroKey = "Three"
+
+shotSector:Cheat("Checkbox", "Enable Force 0 Glitch (Posterizer)", function(State)
+	_G.forceZeroBool = State
+    while _G.forceZeroBool do
+        if UserInputService:IsKeyDown(_G.forceZeroKey) then
+            local args = {
+                [1] = "shotType",   
+                [2] = {
+                    ["Ac"] = {
+                        ["Dunk"] = false,
+                        ["Posting"] = false,
+                        ["ShootingEnabled"] = true,
+                        ["NoMov"] = false,
+                        ["PickupBall"] = false,
+                        ["Shooting"] = false,
+                        ["Blocking"] = false,
+                        ["catchPass"] = false,
+                        ["Dead"] = false,
+                        ["DribbleAnim"] = true,
+                        ["Falling"] = false,
+                        ["Lateral"] = false,
+                        ["Handles"] = false,
+                        ["Pivot"] = false,
+                        ["walkOnCourt"] = false,
+                        ["HideChars"] = false,
+                        ["Pick"] = false,
+                        ["Running"] = true,
+                        ["PumpFake"] = false,
+                        ["ShotBall"] = false,
+                        ["Dropball"] = false,
+                        ["brokenAnkles"] = false,
+                        ["Steal"] = false,
+                        ["Rebound"] = false,
+                        ["Guarding"] = false,
+                        ["PostMove"] = false,
+                        ["hasBall"] = true,
+                        ["withBallMovement"] = false,
+                        ["hopStep"] = false,
+                        ["offDribble"] = false,
+                        ["CrossOver"] = false,
+                        ["Passing"] = false,
+                        ["NoRun"] = false
+                    },
+                    ["Con"] = "dunk",
+                    ["vel"] = 16.79998779296875,
+                    ["Co"] = {
+                        ["shift"] = false,
+                        ["shiftHold"] = true,
+                        ["Passing"] = false,
+                        ["Alley"] = false
+                    }
+                }
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+            
+            local args = {
+                [1] = "shotType",
+                [2] = {
+                    ["Ac"] = {
+                        ["Dunk"] = false,
+                        ["Posting"] = false,
+                        ["ShootingEnabled"] = true,
+                        ["NoMov"] = false,
+                        ["PickupBall"] = false,
+                        ["Shooting"] = true,
+                        ["Blocking"] = false,
+                        ["catchPass"] = false,
+                        ["Dead"] = false,
+                        ["DribbleAnim"] = false,
+                        ["Falling"] = false,
+                        ["Lateral"] = false,
+                        ["Handles"] = false,
+                        ["Pivot"] = false,
+                        ["walkOnCourt"] = false,
+                        ["HideChars"] = false,
+                        ["Pick"] = false,
+                        ["Running"] = false,
+                        ["PumpFake"] = false,
+                        ["ShotBall"] = false,
+                        ["Dropball"] = false,
+                        ["brokenAnkles"] = false,
+                        ["Steal"] = false,
+                        ["Rebound"] = false,
+                        ["Guarding"] = false,
+                        ["PostMove"] = false,
+                        ["hasBall"] = true,
+                        ["withBallMovement"] = false,
+                        ["hopStep"] = false,
+                        ["offDribble"] = false,
+                        ["CrossOver"] = false,
+                        ["Passing"] = false,
+                        ["NoRun"] = false
+                    },
+                    ["Con"] = "reg",
+                    ["Co"] = {
+                        ["shift"] = false,
+                        ["shiftHold"] = true,
+                        ["Passing"] = false,
+                        ["Alley"] = false
+                    },
+                    ["vel"] = 16.799989700317383,
+                    ["pv"] = Vector3.new(1.0231953859329224, 0, 16.768802642822266)
+                }
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+            
+            local args = {
+                [1] = "addPower",
+                [2] = {
+                    ["Con"] = "dunk"
+                }
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+            
+            local args = {
+                [1] = "addPower",
+                [2] = {}
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+            
+            local args = {
+                [1] = "stop"
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+            
+            local args = {
+                [1] = "Pump"
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+            
+            local args = {
+                [1] = "release"
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))            
+        end
+        if _G.forceZeroBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+shotSector:Cheat("Textbox", "Force 0 Glitch", function(Value)
+    _G.forceZeroKey = Value
+	print("Textbox value changed:", Value)
+end, {
+	placeholder = "Three"
+})
+
+_G.fastStopKey = "Four"
+
+shotSector:Cheat("Checkbox", "Fast stop", function(State)
+	_G.fastStopBool = State
+    while _G.fastStopBool do
+        if UserInputService:IsKeyDown(_G.fastStopKey) then
+            local args = {
+                [1] = "shotType",
+                [2] = {
+                    ["Ac"] = {
+                        ["Dunk"] = false,
+                        ["Posting"] = false,
+                        ["ShootingEnabled"] = true,
+                        ["NoMov"] = false,
+                        ["PickupBall"] = false,
+                        ["Shooting"] = true,
+                        ["Blocking"] = false,
+                        ["catchPass"] = false,
+                        ["Dead"] = false,
+                        ["DribbleAnim"] = false,
+                        ["Falling"] = false,
+                        ["Lateral"] = false,
+                        ["Handles"] = false,
+                        ["Pivot"] = false,
+                        ["walkOnCourt"] = false,
+                        ["HideChars"] = false,
+                        ["Pick"] = false,
+                        ["Running"] = false,
+                        ["PumpFake"] = false,
+                        ["ShotBall"] = false,
+                        ["Dropball"] = false,
+                        ["brokenAnkles"] = false,
+                        ["Steal"] = false,
+                        ["Rebound"] = false,
+                        ["Guarding"] = false,
+                        ["PostMove"] = false,
+                        ["hasBall"] = true,
+                        ["withBallMovement"] = true,
+                        ["hopStep"] = false,
+                        ["offDribble"] = false,
+                        ["CrossOver"] = false,
+                        ["Passing"] = false,
+                        ["NoRun"] = false
+                    },
+                    ["Con"] = "reg",
+                    ["Co"] = {
+                        ["shift"] = false,
+                        ["shiftHold"] = true,
+                        ["Passing"] = false,
+                        ["Alley"] = false
+                    },
+                    ["vel"] = 0,
+                    ["pv"] = Vector3.new(0, 0, 0)
+                }
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))            
+        end
+        if _G.fastStopBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+shotSector:Cheat("Textbox", "Fast Stop Key", function(Value)
+    _G.fastStopKey = Value
+	print("Textbox value changed:", Value)
+end, {
+	placeholder = "K"
+})
+
+shotSector:Cheat("Checkbox", "FS", function(State)
+	_G.fastPostBool = State
+    while _G.fastPostBool do
+        if power.Value >= _G.aimbotValue then
+            if power.Moving.Value or power.PostFade.Value or power.PostHook.Value or power.Fade.Value or power.Layup.Value then
+                if power.Layup.Value then
+                    local args = {
+                        [1] = "stop"
+                    }
+                    
+                    game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+                    wait(0.12)
+                end
+                if power.Fade.Value then
+                    local args = {
+                        [1] = "stop"
+                    }
+                    
+                    game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+                    wait(0.05)
+                end
+                if power.PostFade.Value then
+                    local args = {
+                        [1] = "stop"
+                    }
+                    
+                    game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+                    wait(0.05)
+                end
+                if power.Moving.Value or power.PostHook.Value then
+                    local args = {
+                        [1] = "stop"
+                    }
+                    
+                    game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+                    wait(0.01)
+                end       
+                local args = {
+                    [1] = "release"
+                }
+                
+                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+            end
+        end                
+        if _G.fastPostBool == false then
+            break
+        end
+        wait(0.001)
+    end
+end)
+
+-- if isShooting then
+-- wait(1)
+-- PlayAnimation(4865009552)
+-- end
+
+local isShooting = game.Players.LocalPlayer.Backpack.Actions.Shooting
+local hasBall = game.Players.LocalPlayer.Info.Profile.currentBall
+local upCol = workspace[game.Players.LocalPlayer.Name].UpperTorso.CollisionGroup
+
+_G.retardKey = "Zero"
+
+shotSector:Cheat("Checkbox", "Retard Shot", function(State)
+	_G.retardBool = State
+    while _G.retardBool do
+        if UserInputService:IsKeyDown(_G.retardKey) then
+            local args = {
+                [1] = "shotType",
+                [2] = {
+                    ["Ac"] = {
+                        ["Dunk"] = false,
+                        ["Posting"] = false,
+                        ["ShootingEnabled"] = true,
+                        ["NoMov"] = false,
+                        ["PickupBall"] = false,
+                        ["Shooting"] = false,
+                        ["Blocking"] = false,
+                        ["catchPass"] = false,
+                        ["Dead"] = false,
+                        ["DribbleAnim"] = true,
+                        ["Falling"] = false,
+                        ["Lateral"] = false,
+                        ["Handles"] = false,
+                        ["Pivot"] = false,
+                        ["walkOnCourt"] = false,
+                        ["HideChars"] = false,
+                        ["Pick"] = false,
+                        ["Running"] = true,
+                        ["PumpFake"] = false,
+                        ["ShotBall"] = false,
+                        ["Dropball"] = false,
+                        ["brokenAnkles"] = false,
+                        ["Steal"] = false,
+                        ["Rebound"] = false,
+                        ["Guarding"] = false,
+                        ["PostMove"] = false,
+                        ["hasBall"] = true,
+                        ["withBallMovement"] = false,
+                        ["hopStep"] = false,
+                        ["offDribble"] = false,
+                        ["CrossOver"] = false,
+                        ["Passing"] = false,
+                        ["NoRun"] = false
+                    },
+                    ["Con"] = "dunk",
+                    ["vel"] = 16.79998779296875,
+                    ["Co"] = {
+                        ["shift"] = false,
+                        ["shiftHold"] = true,
+                        ["Passing"] = false,
+                        ["Alley"] = false
+                    }
+                }
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+            
+            local args = {
+                [1] = "shotType",
+                [2] = {
+                    ["Ac"] = {
+                        ["Dunk"] = false,
+                        ["Posting"] = false,
+                        ["ShootingEnabled"] = true,
+                        ["NoMov"] = false,
+                        ["PickupBall"] = false,
+                        ["Shooting"] = true,
+                        ["Blocking"] = false,
+                        ["catchPass"] = false,
+                        ["Dead"] = false,
+                        ["DribbleAnim"] = false,
+                        ["Falling"] = false,
+                        ["Lateral"] = false,
+                        ["Handles"] = false,
+                        ["Pivot"] = false,
+                        ["walkOnCourt"] = false,
+                        ["HideChars"] = false,
+                        ["Pick"] = false,
+                        ["Running"] = false,
+                        ["PumpFake"] = false,
+                        ["ShotBall"] = false,
+                        ["Dropball"] = false,
+                        ["brokenAnkles"] = false,
+                        ["Steal"] = false,
+                        ["Rebound"] = false,
+                        ["Guarding"] = false,
+                        ["PostMove"] = false,
+                        ["hasBall"] = true,
+                        ["withBallMovement"] = false,
+                        ["hopStep"] = false,
+                        ["offDribble"] = false,
+                        ["CrossOver"] = false,
+                        ["Passing"] = false,
+                        ["NoRun"] = false
+                    },
+                    ["Con"] = "reg",
+                    ["Co"] = {
+                        ["shift"] = false,
+                        ["shiftHold"] = true,
+                        ["Passing"] = false,
+                        ["Alley"] = false
+                    },
+                    ["vel"] = 16.799989700317383,
+                    ["pv"] = Vector3.new(1.0231953859329224, 0, 16.768802642822266)
+                }
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+            
+            local args = {
+                [1] = "addPower",
+                [2] = {
+                    ["Con"] = "dunk"
+                }
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+            
+            local args = {
+                [1] = "addPower",
+                [2] = {}
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+            
+            local args = {
+                [1] = "stop"
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+            
+            local args = {
+                [1] = "Pump"
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+            
+            local args = {
+                [1] = "release"
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))    
+            
+                local args = {
+                    [1] = "shotType",
+                    [2] = {
+                    ["Ac"] = {
+                        ["Dunk"] = false,
+                        ["Posting"] = false,
+                        ["ShootingEnabled"] = true,
+                        ["NoMov"] = false,
+                        ["PickupBall"] = false,
+                        ["Shooting"] = true,
+                        ["Blocking"] = false,
+                        ["catchPass"] = false,
+                        ["Dead"] = false,
+                        ["DribbleAnim"] = false,
+                        ["Falling"] = false,
+                        ["Lateral"] = false,
+                        ["Handles"] = false,
+                        ["Pivot"] = false,
+                        ["walkOnCourt"] = false,
+                        ["HideChars"] = false,
+                        ["Pick"] = false,
+                        ["Running"] = false,
+                        ["PumpFake"] = false,
+                        ["ShotBall"] = false,
+                        ["Dropball"] = false,
+                        ["brokenAnkles"] = false,
+                        ["Steal"] = false,
+                        ["Rebound"] = false,
+                        ["Guarding"] = false,
+                        ["PostMove"] = false,
+                        ["hasBall"] = true,
+                        ["withBallMovement"] = true,
+                        ["hopStep"] = false,
+                        ["offDribble"] = false,
+                        ["CrossOver"] = false,
+                        ["Passing"] = false,
+                        ["NoRun"] = false
+                    },
+                    ["Con"] = "reg",
+                    ["Co"] = {
+                        ["shift"] = false,
+                        ["shiftHold"] = true,
+                        ["Passing"] = false,
+                        ["Alley"] = false
+                    },
+                    ["vel"] = 1.4369203427122557e-07,
+                    ["pv"] = Vector3.new(-7.932749213068746e-08, 0, 1.1981046554865316e-07)
+                    }
+                    }
+        
+                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+        
+                local args = {
+                [1] = "addPower",
+                [2] = {}
+                }
+        
+                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+        
+        print('is it working?')
+        
+            repeat
+                wait()
+            until
+                power.Value >= _G.aimbotValue
+        
+            if power.Value >= _G.aimbotValue then
+            print("wah")
+            local args = {
+                [1] = "stop"
+                }
+        
+                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+        
+                local args = {
+                [1] = "loadStats"
+                }
+                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+        
+                wait(0.2)
+        
+                PlayAnimation(5463881468)
+                
+                local args = {
+                [1] = "release"
+                }
+        
+                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Ball"):InvokeServer(unpack(args))
+                -- StopAllAnimations()
+            end
+
+    end
+        
+
+        if _G.retardBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+shotSector:Cheat("Textbox", "Retard Shot Key", function(Value)
+    _G.retardKey = Value
+	print("Textbox value changed:", Value)
+end, {
+	placeholder = "Zero"
+})
+
+moveSector:Cheat("Checkbox", "Always Travel", function(State)
+	_G.travelBool = State
+    if _G.travelBool == false then
+        game.Players.LocalPlayer.Backpack.Actions.Rebounding.Value = false
+    end
+    while _G.travelBool do
+        game.Players.LocalPlayer.Backpack.Actions.Rebounding.Value = true
+        if _G.travelBool == false then
+            game.Players.LocalPlayer.Backpack.Actions.Rebounding.Value = false
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+function setRotation(x,y,z)
+    local Client = game:GetService("Players").LocalPlayer
+    Client.Character.HumanoidRootPart.CFrame = Client.Character.HumanoidRootPart.CFrame * CFrame.Angles(math.rad(x), math.rad(y), math.rad(z))
+end
+
+local function flipCoin()
+    return math.random() < 0.5
+end
+
+moveSector:Cheat("Checkbox", "Have seizures", function(State)
+	_G.rotBool = State
+    while _G.rotBool do
+        if power.Dunk.Value then
+            if flipCoin() then
+                setRotation(0,10,0)
+            else
+                setRotation(0,-10,0)
+            end
+        end
+        if pick.Value then
+            setRotation(0,5,0)
+        end
+        if _G.rotBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+_G.passKey = "KeypadEight"
+
+passSector:Cheat("Checkbox", "Enable Free Pass", function(State)
+	_G.passBool = State
+    while _G.passBool do
+        if UserInputService:IsKeyDown(_G.passKey) then
+            PlayAnimation(4746870921)
+            local args = {
+                [1] = "pass",
+                [2] = {
+                    ["Alley"] = _G.isAlley,
+                    ["Plr"] = _G.passPerson
+                }
+            }
+            game:GetService("ReplicatedStorage").Events.Player.Ball:InvokeServer(unpack(args))
+            wait(0.4)
+            StopAllAnimations()
+        end
+        if _G.passBool == false then
+            break
+        end
+        wait(0.1)
+    end
+end)
+
+passSector:Cheat("Checkbox", "Alley", function(State)
+	print("Checkbox state changed:", State)
+    _G.isAlley = State
+end)
+
+passSector:Cheat("Textbox", "Pass Key", function(Value)
+    _G.passKey = Value
+	print("Textbox value changed:", Value)
+end, {
+	placeholder = "KeypadEight"
+})
+
+passSector:Cheat("Textbox", "Pass Name", function(Value)
+    _G.passPerson = Value
+	print("Textbox value changed:", Value)
+end, {
+	placeholder = "Username"
+})
+
+_G.ballExpKey = "KeypadOne"
+_G.ballRetKey = "KeypadTwo"
+
+ballSector:Cheat("Checkbox", "Toggle Ball Expander", function(State)
+	_G.ballExpBool = State
+    while _G.ballExpBool do
+        if UserInputService:IsKeyDown(_G.ballExpKey) then
+            for _,balls in pairs(game.Workspace.Balls:GetChildren()) do
+                if balls.Name == "Ball" then
+                    balls.Size = Vector3.new(4.25, 4.25, 4.25)
+                end
+            end
+        end
+        
+        if _G.ballExpBool == false then
+            break
+        end
+        wait(0.05)
+    end
+end)
+
+ballSector:Cheat("Textbox", "Ball Expander Key", function(Value)
+    _G.ballExpKey = Value
+	print("Textbox value changed:", Value)
+end, {
+	placeholder = "KeypadOne"
+})
+ballSector:Cheat("Checkbox", "Toggle Ball Retractor", function(State)
+	_G.ballRetBool = State
+    while _G.ballRetBool do
+        if UserInputService:IsKeyDown(_G.ballRetKey) then
+            for _,balls in pairs(game.Workspace.Balls:GetChildren()) do
+                if balls.Name == "Ball" then
+                    balls.Size = Vector3.new(1.32, 1.32, 1.32)
+                end
+            end
+        end
+        if _G.ballRetBool == false then
+            break
+        end
+        wait(0.1)
+    end
+end)
+
+_G.ballIntKey = "Five"
+_G.ballIntAnim = false
+local isAnimationPlaying = false
+local AnimationId = "rbxassetid://5487855934"
+
+ballIntSector:Cheat("Checkbox", "Ball Teleport", function(State)
+	_G.ballIntBool = State
+    while _G.ballIntBool do
+        if UserInputService:IsKeyDown(_G.ballIntKey) then
+            local args = {
+                [1] = "rebound"
+            }
+            game:GetService("ReplicatedStorage").Events.Player.Actions:FireServer(unpack(args))
+            
+            if _G.ballIntAnim then
+                local ballFound = false
+                for _, balls in pairs(workspace[game.Players.LocalPlayer.Name].UpperTorso:GetChildren()) do
+                    if balls.Name == "Ball" then
+                        ballFound = true
+                        wait(0.25)
+                        game.Players.LocalPlayer.Backpack.Actions.Rebounding.Value = false
+                        break
+                    end
+                end
+
+                isAnimationPlaying = false
+
+                local animator = game.Players.LocalPlayer.Character.Humanoid.Animator
+                local activeAnimations = animator:GetPlayingAnimationTracks()
+                for _, animTrack in ipairs(activeAnimations) do
+                    print(animTrack.Animation.AnimationId)
+                    if animTrack.Animation.AnimationId == AnimationId then
+                        isAnimationPlaying = true
+                        game.Players.LocalPlayer.Backpack.Actions.Rebounding.Value = true
+                        print(isAnimationPlaying)
+                        break
+                    end
+                end
+
+                if not ballFound and isAnimationPlaying == false then
+                    print(isAnimationPlaying)
+                    PlayAnimation(5487855934)
+                end
+            end
+        end
+        
+        if _G.ballIntBool == false then
+            break
+        end
+        
+        wait(0.01)
+    end    
+end)
+ballIntSector:Cheat("Checkbox", "Add Animation", function(State)
+	print("Checkbox state changed:", State)
+    _G.ballIntAnim = State
+end)
+ballIntSector:Cheat("Textbox", "Ball TP Key", function(Value)
+    _G.ballIntKey = Value
+	print("Textbox value changed:", Value)
+end, {
+	placeholder = "Five"
+})
+
+localSector:Cheat("Checkbox", "???", function(State)
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local originalLeftHand = character.LeftHand
+    local originalRightHand = character.RightHand
+    local clonedLeftHand = originalLeftHand:Clone()
+    local clonedRightHand = originalRightHand:Clone()
+	_G.unknownBool = State
+    if _G.unknownBool then
+        -- Check if the hands exist in the character
+        if originalLeftHand and originalRightHand then
+            -- Make the original hands invisible
+            originalLeftHand.Transparency = 1
+            originalRightHand.Transparency = 1
+            originalLeftHand.Massless = true
+            originalRightHand.Massless = true
+
+            -- Parent the cloned hands to the character's workspace
+            clonedLeftHand.Parent = character
+            clonedRightHand.Parent = character
+            print("Changed")
+        else
+            print("Not found in character.")
+        end
+    else
+        clonedLeftHand:Destroy()
+        clonedRightHand:Destroy()
+    end
+    while _G.unknownBool do
+        if game.Players.LocalPlayer.Backpack.Actions.Blocking.Value then
+            originalRightHand.Size = Vector3.new(10,10,10)
+            originalLeftHand.Size = Vector3.new(10,10,10)
+        else
+            originalRightHand.Size = Vector3.new(0.7703777551651001, 1.425475001335144, 0.8270343542098999)
+            originalLeftHand.Size = Vector3.new(0.7703777551651001, 1.425475001335144, 0.8270343542098999)
+        end
+        if _G.unknownBool == false then
+            originalLeftHand.Transparency = 0
+            originalRightHand.Transparency = 0
+            clonedLeftHand:Destroy()
+            clonedRightHand:Destroy()
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+localSector:Cheat("Checkbox", "XDDDD", function(State)
+	_G.ghostBool = State
+    while _G.ghostBool do
+        if power.Layup.Value or power.Dunk.Value or power.Floater.Value or power.LayupR.Value then
+            workspace[player.Name].UpperTorso.CanCollide = false
+            workspace[player.Name].LowerTorso.CanCollide = false
+            workspace[player.Name].Collider.CanCollide = false
+            workspace[player.Name].HumanoidRootPart.CanCollide = false
+        else
+            workspace[player.Name].UpperTorso.CanCollide = true
+            workspace[player.Name].LowerTorso.CanCollide = true
+            workspace[player.Name].Collider.CanCollide = true
+            workspace[player.Name].HumanoidRootPart.CanCollide = true
+        end
+        if _G.ghostBool == false then
+            break
+        end
+        wait(0.02)
+    end
+end)
+
+localSector:Cheat("Checkbox", "Break", function(State)
+	_G.breakBool = State
+    while _G.breakBool do
+        local players = game:GetService("Players")
+        local localPlayer = players.LocalPlayer
+        local nearestPlayer = nil
+        local nearestDistance = math.huge
+        local startTime = os.clock()
+
+        for _, player in pairs(players:GetPlayers()) do
+            if player ~= localPlayer then
+                local distance = (player.Character.Head.Position - localPlayer.Character.Head.Position).Magnitude
+                if distance < nearestDistance then
+                    nearestPlayer = player
+                    nearestDistance = distance
+                end
+            end
+        end
+
+        -- print("Nearest player is " .. nearestPlayer.Name .. " and the distance is " .. nearestDistance)
+
+        if nearestDistance < 15 then
+            if nearestPlayer.Backpack.Actions.Reaching.Value then
+                local endTime = os.clock()
+                local executionTime = endTime - startTime
+                print("Execution time:", executionTime, "seconds")
+                pressKey(Enum.KeyCode.H)
+                wait(0.1)
+                releaseKey(Enum.KeyCode.H)
+            end
+        end
+
+        if _G.breakBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+localSector:Cheat("Checkbox", "AR", function(State)
+	_G.arBool = State
+    while _G.arBool do
+        if UserInputService:IsKeyDown("B") then
+            local players = game:GetService("Players")
+            local localPlayer = players.LocalPlayer
+            local localCharacter = localPlayer.Character
+            if localCharacter and localCharacter:FindFirstChild("Head") then
+                local nearestBall = nil
+                local nearestDistance = math.huge
+                for _, balls in pairs(game.Workspace.Balls:GetChildren()) do
+                    local distance = (balls.Position - localCharacter.Head.Position).Magnitude
+                    if distance < nearestDistance then
+                        nearestBall = balls
+                        nearestBall2 = balls
+                        nearestDistance = distance
+                    end
+                end
+
+                local humanoid = localCharacter.Humanoid
+                print(nearestBall, nearestDistance)
+                if nearestDistance < 13 then
+                    if nearestBall:FindFirstChild("Rebound") then
+                        local blockableValue = nearestBall.Rebound.Value
+                        if blockableValue ~= nil and blockableValue == true then
+                            for _, balls in pairs(game.Workspace.Balls:GetChildren()) do
+                                local distance = (balls.Position - localCharacter.Head.Position).Magnitude
+                                if distance < nearestDistance then
+                                    nearestBall = balls
+                                end
+                            end
+                            pressKey(Enum.KeyCode.LeftShift)
+                            humanoid:MoveTo(nearestBall.Position)
+                            wait(0.3)
+                            pressKey(Enum.KeyCode.Space)
+                        end
+                    end
+                end
+            end
+        end
+        if _G.arBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+local blockingAnim = false
+
+localSector:Cheat("Checkbox", "AB", function(State)
+	_G.bumpBool = State
+    while _G.bumpBool do
+        if UserInputService:IsKeyDown("L") then
+            local players = game:GetService("Players")
+            local localPlayer = players.LocalPlayer
+            local localCharacter = localPlayer.Character
+            if localCharacter and localCharacter:FindFirstChild("Head") then
+                local nearestBall = nil
+                local nearestBall2 = nil
+                local nearestDistance = math.huge
+                for _, balls in pairs(game.Workspace.Balls:GetChildren()) do
+                    local distance = (balls.Position - localCharacter.Head.Position).Magnitude
+                    if distance < nearestDistance then
+                        nearestBall = balls
+                        nearestBall2 = balls
+                        nearestDistance = distance
+                    end
+                end
+                local ballOwner = nearestBall.Owner.Value
+
+                local humanoid = localCharacter.Humanoid
+                print(nearestBall, nearestDistance)
+                if nearestDistance < 15 then
+                    if nearestBall:FindFirstChild("Blockable") then
+                        if nearestBall.Alley.Value == true then
+                            blockingAnim = false
+                            wait(0.25)
+                            for _, balls in pairs(game.Workspace.Balls:GetChildren()) do
+                                local distance = (balls.Position - localCharacter.Head.Position).Magnitude
+                                if distance < nearestDistance then
+                                    nearestBall = balls
+                                    nearestBall2 = balls
+                                    nearestDistance = distance
+                                end
+                            end
+                            local args = {
+                                [1] = "guard",
+                                [2] = true
+                            }
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            pressKey(Enum.KeyCode.LeftShift)
+                            humanoid:MoveTo(nearestBall.Position)
+                            wait(0.05)
+                            local args = {
+                                [1] = "block"
+                            }
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            pressKey(Enum.KeyCode.Space)
+                            humanoid:MoveTo(nearestBall.Position)
+                            print("rahhhh")
+                            pressKey(Enum.KeyCode.Space)
+
+                            local args = {
+                                [1] = "block"
+                            }
+        
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            pressKey(Enum.KeyCode.Space)
+                            
+                            wait(0.05)
+                            pressKey(Enum.KeyCode.Space)
+                            local animator = game.Players.LocalPlayer.Character.Humanoid.Animator
+                            local activeAnimations = animator:GetPlayingAnimationTracks()
+                            for _, animTrack in ipairs(activeAnimations) do
+                                print(animTrack.Animation.AnimationId)
+                                if animTrack.Animation.AnimationId == "rbxassetid://5487819984" or animTrack.Animation.AnimationId == "rbxassetid://5611032959" or animTrack.Animation.AnimationId == "rbxassetid://5487764686" then
+                                    blockingAnim = true
+                                    print("AFSDFSDFSDF")
+                                end
+                            end
+                            print(blockingAnim)
+                            if blockingAnim == false then
+                                print("HAHAHAAHAHAHAHAAHAHAHAHAA")
+                                PlayAnimation(5487764686)
+                                print(blockingAnim)
+                            end
+
+                            local args = {
+                                [1] = "block"
+                            }
+        
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            wait(0.05)
+                            wait(0.05)
+                            local args = {
+                                [1] = "block"
+                            }
+        
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            wait(0.1)
+                            local args = {
+                                [1] = "block"
+                            }
+        
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            wait(0.1)
+                            local args = {
+                                [1] = "block"
+                            }
+        
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            wait(0.1)
+                            local args = {
+                                [1] = "block"
+                            }
+        
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            wait(0.1)
+                            local args = {
+                                [1] = "block"
+                            }
+        
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            wait(0.1)
+                            local args = {
+                                [1] = "block"
+                            }
+        
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            local args = {
+                                [1] = "guard",
+                                [2] = false
+                            }
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                        end
+                        local blockableValue = nearestBall.Blockable.Value
+                        if blockableValue ~= nil and blockableValue == true and nearestBall.inAction.Value == true and nearestBall.Pass.Value == false then
+                            for _, balls in pairs(game.Workspace.Balls:GetChildren()) do
+                                local distance = (balls.Position - localCharacter.Head.Position).Magnitude
+                                if distance < nearestDistance then
+                                    nearestBall = balls
+                                end
+                            end
+                            blockingAnim = false
+                            local args = {
+                                [1] = "guard",
+                                [2] = true
+                            }
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            pressKey(Enum.KeyCode.LeftShift)
+                            wait(0.1)
+                            humanoid:MoveTo(nearestBall.Position)
+                            wait(0.1)
+                            if nearestBall:FindFirstChild("Blockable") and nearestBall.Blockable.Value == true then
+                                local args = {
+                                    [1] = "block"
+                                }
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                local args = {
+                                    [1] = "guard",
+                                    [2] = true
+                                }
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                pressKey(Enum.KeyCode.Space)
+                                humanoid:MoveTo(nearestBall.Position)
+                                print("rahhhh")
+                                pressKey(Enum.KeyCode.Space)
+
+                                local args = {
+                                    [1] = "block"
+                                }
+            
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                pressKey(Enum.KeyCode.Space)
+                                
+                                wait(0.05)
+                                pressKey(Enum.KeyCode.Space)
+                                local animator = game.Players.LocalPlayer.Character.Humanoid.Animator
+                                local activeAnimations = animator:GetPlayingAnimationTracks()
+                                for _, animTrack in ipairs(activeAnimations) do
+                                    print(animTrack.Animation.AnimationId)
+                                    if animTrack.Animation.AnimationId == "rbxassetid://5487819984" or animTrack.Animation.AnimationId == "rbxassetid://5611032959" or animTrack.Animation.AnimationId == "rbxassetid://5487764686" then
+                                        blockingAnim = true
+                                        print("AFSDFSDFSDF")
+                                    end
+                                end
+                                print(blockingAnim)
+                                if blockingAnim == false then
+                                    print("HAHAHAAHAHAHAHAAHAHAHAHAA")
+                                    PlayAnimation(5487764686)
+                                    print(blockingAnim)
+                                end
+
+                                local args = {
+                                    [1] = "block"
+                                }
+            
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                wait(0.05)
+                                wait(0.05)
+                                local args = {
+                                    [1] = "block"
+                                }
+            
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                wait(0.1)
+                                local args = {
+                                    [1] = "guard",
+                                    [2] = true
+                                }
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                local args = {
+                                    [1] = "block"
+                                }
+            
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                wait(0.1)
+                                local args = {
+                                    [1] = "block"
+                                }
+            
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                wait(0.1)
+                                local args = {
+                                    [1] = "block"
+                                }
+            
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                wait(0.1)
+                                local args = {
+                                    [1] = "guard",
+                                    [2] = true
+                                }
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                local args = {
+                                    [1] = "block"
+                                }
+            
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                wait(0.1)
+                                local args = {
+                                    [1] = "block"
+                                }
+            
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                                local args = {
+                                    [1] = "guard",
+                                    [2] = false
+                                }
+                                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Player"):WaitForChild("Actions"):FireServer(unpack(args))
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        if _G.bumpBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+localSector:Cheat("Checkbox", "Reduce pushback", function(State)
+	_G.pushBool = State
+    while _G.pushBool do
+        if pushback.Value then
+            pushback.Value = false
+        end
+        if _G.pushBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+localSector:Cheat("Checkbox", "Change Body Velocity", function(State)
+	_G.hopBool = State
+    while _G.hopBool do
+        changeBodyVelocity()
+        wait(1.15)
+    end
+end)
+
+
+localSector:Cheat("Checkbox", "Screen", function(State)
+	_G.screenExpBool = State
+    while _G.screenExpBool do
+        if pick.Value then
+            if workspace[game.Players.LocalPlayer.Name].Pick ~= nil then
+                workspace[game.Players.LocalPlayer.Name].Pick.Size = Vector3.new(25,25,10)
+            end
+        end
+        if _G.screenExpBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+localSector:Cheat("Checkbox", "Box Out", function(State)
+	_G.boxExpBool = State
+    while _G.boxExpBool do
+        if boxout.Value then
+            if workspace[game.Players.LocalPlayer.Name].BoxOut ~= nil then
+                workspace[game.Players.LocalPlayer.Name].BoxOut.Size = Vector3.new(10,3,4)
+            end
+        end
+        if _G.boxExpBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+
+localSector:Cheat("Slider", "Stat Change", function(Value)
+	print("Speed changed:", Value)
+    stats.Speed.Value = Value
+    stats.SpeedBall.Value = Value
+    stats.DefensiveSpeed.Value = Value
+    stats.Contest.Value = Value
+end, {min = stats.Speed.Value, max = 105, suffix = " studs"})
+
+worldSector:Cheat("Checkbox", "Animate nets", function(State)
+	_G.netsBool = State
+    while _G.netsBool do
+        local dunkVal = power.Dunk
+        local dunkChange = dunkVal:GetPropertyChangedSignal("Value"):Connect(function()
+            if dunkVal.Value == true then
+                game:GetService("Players").LocalPlayer.Info.Settings.MovingNets.Value = false
+                game:GetService("Players").LocalPlayer.PlayerScripts.ClientRender.Disabled = true
+                wait(0.1)
+                game:GetService("Players").LocalPlayer.PlayerScripts.ClientRender.Enabled = true
+            end
+            if dunkVal.Value == false then
+                game:GetService("Players").LocalPlayer.Info.Settings.MovingNets.Value = true
+                game:GetService("Players").LocalPlayer.PlayerScripts.ClientRender.Disabled = true
+                wait(0.1)
+                game:GetService("Players").LocalPlayer.PlayerScripts.ClientRender.Enabled = true
+            end
+        end)
+        if _G.netsBool == false then
+            dunkChange:Disconnect()
+            game:GetService("Players").LocalPlayer.Info.Settings.MovingNets.Value = false
+            game:GetService("Players").LocalPlayer.PlayerScripts.ClientRender.Disabled = true
+            wait(0.1)
+            game:GetService("Players").LocalPlayer.PlayerScripts.ClientRender.Enabled = true
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+aesSector:Cheat("Button", "Change balls texture", function()
+    -- Function to modify Ball objects
+    local function ModifyBalls(ballsFolder)
+        for _, ball in ipairs(ballsFolder:GetChildren()) do
+            if ball.Name == "Ball" then
+                ball.TextureID = "rbxassetid://6830349233"
+            end
+        end
+    end
+
+    -- Watch for changes in Workspace.Balls folder
+    local ballsFolder = game.Workspace.Balls
+
+    -- Initial modification of existing Ball objects
+    ModifyBalls(ballsFolder)
+
+    -- Handle new objects added to Workspace.Balls
+    ballsFolder.ChildAdded:Connect(function(child)
+        if child.Name == "Ball" then
+            ModifyBalls(ballsFolder)
+        end
+    end)
+
+    -- Handle objects removed from Workspace.Balls
+    ballsFolder.ChildRemoved:Connect(function(child)
+        if child.Name == "Ball" then
+            ModifyBalls(ballsFolder)
+        end
+    end)
+end)
+
+aesSector:Cheat("Button", "Shotmeter", function()
+    game:GetService("Players").LocalPlayer.PlayerGui.ShotMeter.Enabled = false
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local Settings = require(ReplicatedStorage.Modules.Settings)
+
+    -- Create ScreenGui
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ShotMeterScreenGui"
+    ScreenGui.Parent = LocalPlayer.PlayerGui
+
+    -- Create ShotMeterBillboard
+    local ShotMeterBillboard = Instance.new("BillboardGui")
+    ShotMeterBillboard.Name = "ShotMeterBillboard"
+    ShotMeterBillboard.Adornee = LocalPlayer.Character.Head
+    ShotMeterBillboard.AlwaysOnTop = true
+    ShotMeterBillboard.Size = UDim2.new(0, 20, 0, 200) -- Adjust the size as needed
+    ShotMeterBillboard.StudsOffset = ShotMeterBillboard.StudsOffset + Vector3.new(2, -1.25, 0)
+    ShotMeterBillboard.Parent = ScreenGui 
+    ShotMeterBillboard.ResetOnSpawn = false -- We don't want to reset it on spawn
+
+    -- Create RoundedSquare frame
+    local RoundedSquare = Instance.new("Frame")
+    RoundedSquare.Name = "Frame"
+    RoundedSquare.Size = UDim2.new(0, 10, 0, 100) -- Set the size
+    RoundedSquare.BackgroundTransparency = 1 -- Set the transparency to 1 initially
+
+    -- Create border frame
+    local Border = Instance.new("Frame")
+    Border.Name = "Border"
+    Border.Size = UDim2.new(0, 10, 0, 100) -- Adjust the size to create a smaller border
+    Border.Position = UDim2.new(0, 0, 0, -1) -- Offset position to create the border effect
+    Border.BackgroundColor3 = Color3.new(1, 0, 225) -- Set the border color
+    Border.BorderSizePixel = 0
+    Border.Parent = ShotMeterBillboard
+
+    -- Create UI corner for RoundedSquare
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 5) -- Adjust the corner radius as needed
+    UICorner.Parent = RoundedSquare
+
+    -- Create UI corner for the border
+    local BorderUICorner = Instance.new("UICorner")
+    BorderUICorner.CornerRadius = UDim.new(0, 6) -- Adjust the corner radius slightly larger than RoundedSquare
+    BorderUICorner.Parent = Border
+
+    -- Parent the RoundedSquare to the ShotMeterBillboard
+    RoundedSquare.Parent = ShotMeterBillboard
+
+    local ShotPower = LocalPlayer:WaitForChild("Info").Profile.ShotPower
+    local BallPower = Settings.BallPower
+
+    -- Create ShotProgress frame
+    local ShotProgress = Instance.new("Frame")
+    ShotProgress.Name = "Progress"
+    ShotProgress.BackgroundTransparency = 0
+    ShotProgress.BorderSizePixel = 0
+    ShotProgress.Size = UDim2.new(1, -4, 1, -4) -- Adjust the size to fit within the border
+    ShotProgress.Position = UDim2.new(0, 2, 0, 2) -- Offset position to fit within the border
+    ShotProgress.BackgroundColor3 = Color3.new(128/255, 128/255, 225/255)
+    ShotProgress.ClipsDescendants = true
+    ShotProgress.Parent = RoundedSquare
+
+    local UICornerProgress = Instance.new("UICorner") -- Create UI corner for ShotProgress
+    UICornerProgress.CornerRadius = UDim.new(0, 5) -- Adjust the corner radius as needed
+    UICornerProgress.Parent = ShotProgress
+
+    -- Create TextLabel
+    local ProgressTextLabel = Instance.new("TextLabel")
+    ProgressTextLabel.Name = "ProgressTextLabel"
+    ProgressTextLabel.Size = UDim2.new(1, 0, 0, 20) -- Adjust the size as needed
+    ProgressTextLabel.Position = UDim2.new(0, 0, 1, 0) -- Position it below the ShotProgress
+    ProgressTextLabel.BackgroundTransparency = 1 -- Set the transparency to 1
+    ProgressTextLabel.TextColor3 = Color3.new(1, 1, 1) -- Set the text color
+    ProgressTextLabel.TextSize = 14 -- Set the text size
+    ProgressTextLabel.Font = Enum.Font.SourceSansBold -- Set the font
+    ProgressTextLabel.TextXAlignment = Enum.TextXAlignment.Center -- Center the text horizontally
+    ProgressTextLabel.Parent = RoundedSquare
+    ProgressTextLabel.TextStrokeTransparency = 0
+
+    local function updateProgress()
+        local progress = ShotPower.Value / BallPower
+        ShotProgress.Size = UDim2.new(1, -4, progress, -4) -- Adjust the height to fit within the border
+        ShotProgress.Position = UDim2.new(0, 2, 1 - progress, 2) -- Adjust the position to align correctly
+
+        ProgressTextLabel.Text = string.format("%.0f%%", progress * 100) -- Update the text with the progress value
+    end
+
+    ShotPower:GetPropertyChangedSignal("Value"):Connect(function()
+        if ShotPower.Value <= 0 then
+            -- Clear any penalties if necessary
+        end
+    end)
+
+    game:GetService("RunService").Stepped:Connect(function()
+        if ShotPower.Value > 0 then
+            ShotMeterBillboard.Enabled = true
+            updateProgress()
+        else
+            ShotMeterBillboard.Enabled = false
+            ShotProgress.Size = UDim2.new(1, -4, 0, -4) -- Reset the size when value is 0
+            ShotProgress.Position = UDim2.new(0, 2, 1, 2) -- Reset the position when value is 0
+        end
+    end)
+
+    while true do
+        wait(0.03) -- Adjust the delay between updates as needed
+    end
+end)
+
+aesSector:Cheat("Button", "Change backboard color", function()
+    local workspace = game:GetService("Workspace")
+    local hoopsFolder = workspace.Hoops
+
+    for _, court in ipairs(hoopsFolder:GetChildren()) do
+        for _, hoop in ipairs(court:GetChildren()) do
+            local extra = hoop:FindFirstChild("Extra")
+            if extra then
+                local square = extra:FindFirstChild("Square")
+                if square then
+                    square.BrickColor = BrickColor.new("Forest green")
+                    square.UsePartColor = true
+                end
+            end
+        end
+    end
+end)
+
+aesSector:Cheat("Button", "Change animations", function()
+    game:GetService("Players").LocalPlayer.Info.Profile.Dunk.Value = "Will"
+    game:GetService("Players").LocalPlayer.Info.Profile.Dunk.Dunk2.Value = "BehindBack"
+    game:GetService("Players").LocalPlayer.Info.Profile.Dunk.Dunk3.Value = "Will"
+    game:GetService("Players").LocalPlayer.Info.Profile.Dunk.Dunk4.Value = "BehindBack"
+    game:GetService("Players").LocalPlayer.Backpack.Input.Disabled = true
+    wait(0.2)
+    game:GetService("Players").LocalPlayer.Backpack.Input.Enabled = true
+    wait(0.1)
+    game:GetService("ReplicatedStorage").Events.Player.LoadPlayer:FireServer()
+end)
+
+localSector:Cheat("Button", "Reset Player", function()
+    game:GetService("ReplicatedStorage").Events.Player.LoadPlayer:FireServer()
+end)
+
+local finishingAnim = false
+local hi = Instance.new("Sound")
+hi.Name = "Sound"
+hi.SoundId = "http://www.roblox.com/asset/?id=828172750"
+hi.Volume = 2
+hi.Looped = true
+hi.archivable = false
+hi.Parent = game.Workspace
+hi.Looped = false
+
+aesSector:Cheat("Checkbox", "Finishing animations", function(State)
+	_G.finBool = State
+    while _G.finBool do
+        local players = game:GetService("Players")
+        local localPlayer = players.LocalPlayer
+        local nearestBall = nil
+        local nearestDistance = math.huge
+        for _, balls in pairs(game.Workspace.Balls:GetChildren()) do
+            local distance = (balls.Position - localPlayer.Character.Head.Position).Magnitude
+            if distance < nearestDistance then
+                nearestBall = balls
+                nearestDistance = distance
+            end
+        end
+
+        finishingAnim = false
+
+        local animator = game.Players.LocalPlayer.Character.Humanoid.Animator
+        local activeAnimations = animator:GetPlayingAnimationTracks()
+        for _, animTrack in ipairs(activeAnimations) do
+            -- print(animTrack.Animation.AnimationId)
+            if animTrack.Animation.AnimationId == 5937558680 then
+                finishingAnim = true
+            end
+        end
+        if tostring(nearestBall.Last.Value) == tostring(localPlayer.Name) then
+            if nearestBall.GreenUI.Enabled == true then
+                humanoid.WalkSpeed = 5
+                if not finishingAnim then
+                    hi:Play()
+                    wait(0.4)
+                    playEmote(5937558680, 1, 3)
+                end
+            end
+        end
+        if _G.finBool == false then
+            break
+        end
+        wait(0.01)
+    end
+end)
+
+
+
+
+local trailS = 225, 0, 0
+local trailE = 225, 0, 0
+
+aesSector:Cheat("Colorpicker", "Trail Start", function(Value)
+    trailS = Value
+end)
+
+aesSector:Cheat("Colorpicker", "Trail End", function(Value)
+    trailE = Value
+end)
+
+aesSector:Cheat("Button", "Change Ball Trail Color", function()
+    for _,balls in pairs(game.Workspace.Balls:GetChildren()) do
+        if balls.Name == "Ball" then
+            balls.Green.Color = ColorSequence.new(Color3.fromRGB(trailS), Color3.fromRGB(trailE))
+            balls.GreenUI.ImageLabel.ImageColor3 = Color3.fromRGB(trailS)
+        end
+    end
+end)
+
+-- Create labels for players
+local playerLabels = {}
+
+-- Create category
+local playerListCategory = finityWindow:Category("Player List")
+local playerListSector = playerListCategory:Sector("Player List") 
+
+-- Create labels for players
+local playerLabels = {}
+
+-- Function to update the player list
+function updatePlayerList()
+    -- Clear previous player labels
+    for _, label in ipairs(playerLabels) do
+        label:Remove()
+    end
+    playerLabels = {}
+
+    -- Get current player list
+    local players = game.Players:GetPlayers()
+
+    -- Create labels for each player
+    for _, player in ipairs(players) do
+        local wins = player.Info.GameStats.W.Value
+        local primary = player.Info.Profile.Position.Archetype.Value
+        local secondary = player.Info.Profile.Position.SecondArchetype.Value
+        local losses = player.Info.GameStats.TotalGames.Value - wins
+        local label = playerListSector:Cheat("Label", player.Name .. " Wins: " .. wins .. " Losses: " .. losses .. " Build: " .. primary .. " " .. secondary)
+        table.insert(playerLabels, label)
+    end
+end
+
+-- Create refresh button
+playerListSector:Cheat("Button", "Update player list", function()
+    -- Manually trigger player list update
+    updatePlayerList()
+    print("Player list refreshed")
+end)
+
+-- Initial player list update
+updatePlayerList()
